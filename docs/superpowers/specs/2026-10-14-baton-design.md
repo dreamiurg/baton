@@ -103,8 +103,8 @@ One TypeScript mod, no separate CLI. The earlier CLI existed for terminal and la
 
 Public GitHub repo `dreamiurg/baton`, so friends can install it. The repo is its own plugin marketplace:
 
-- `.claude-plugin/marketplace.json` listing the `baton` plugin at `./plugin` (or the repo root, whichever `claude plugin validate` accepts for a single-plugin marketplace).
-- README: what it does (with a screenshot of the Bring page), the prerequisite (two or more Desktop windows on separate profiles via `--user-data-dir`, with a short how-to), install (`/plugin marketplace add dreamiurg/baton`, `/plugin install baton@baton`), the optional config file, and limits (macOS only, Code-tab sessions only, a bring costs one cache rebuild).
+- The repo root is the plugin: `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` side by side, the marketplace's one entry with `"source": "./"`.
+- README: what it does (with a screenshot of the Bring page), the prerequisite (two or more Desktop windows on separate profiles via `--user-data-dir`, with a short how-to), install (`/plugin install baton --marketplace dreamiurg/baton`, typed in a terminal Claude Code session, user scope), the optional config file, and limits (macOS only, Code-tab sessions only, a bring costs one cache rebuild).
 - Works for friends with zero config: labels fall back to profile dir names; emails are optional.
 - No personal paths, emails or ids in the code; the mockup data stays in the design artifact only.
 
