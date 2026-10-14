@@ -1,0 +1,4 @@
+node_modules/
+.claude-plugin/types/
+.superpowers/
+.DS_Store

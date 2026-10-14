@@ -1,0 +1,16 @@
+{
+  "name": "baton",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:unit": "node --test --experimental-strip-types 'test/unit/*.spec.ts'",
+    "typecheck": "tsc -p tsconfig.unit.json && if [ -d .claude-plugin/types ]; then tsc -p tsconfig.json; else echo 'skip mod typecheck: run scripts/lay-types.sh'; fi",
+    "validate": "command claude plugin validate .",
+    "test:mod": "command claude plugin test .",
+    "check": "npm run typecheck && npm run test:unit && npm run validate"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3",
+    "@types/node": "22.10.2"
+  }
+}

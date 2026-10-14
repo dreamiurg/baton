@@ -1,0 +1,13 @@
+{
+  "name": "baton",
+  "owner": {
+    "name": "Dmytro Gaivoronsky"
+  },
+  "description": "baton: bring Claude Desktop Code sessions across accounts",
+  "plugins": [
+    {
+      "name": "baton",
+      "source": "./"
+    }
+  ]
+}
