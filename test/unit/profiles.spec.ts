@@ -71,3 +71,26 @@ test('loadProfiles with a single profile returns only self', async () => {
   assert.equal(profiles.length, 1)
   assert.equal(profiles[0]!.sessions.length, 0)
 })
+
+test('an old limit error does not mark the account as at its limit once other sessions ran later', async () => {
+  const fs = memFs({
+    [`${AS}/Claude/claude-code-sessions/a/o/local_1.json`]: rec({ cliSessionId: 'aaa', originCwd: '/r/app', lastActivityAt: 1_000, error: "You've hit your weekly limit · resets 1am", errorAt: 1_000 }),
+    [`${AS}/Claude/claude-code-sessions/a/o/local_2.json`]: rec({ cliSessionId: 'bbb', originCwd: '/r/app', lastActivityAt: 1_000 + 3_600_000 }),
+    [tx('/r/app', 'aaa')]: 'x',
+    [tx('/r/app', 'bbb')]: 'x',
+  })
+  const self: Self = { home: HOME, profileDir: 'Claude-Work', profilePath: `${AS}/Claude-Work`, desktopPid: 1 }
+  const [claude] = await loadProfiles(fs, self, 10_000_000, iso => iso)
+  assert.equal(claude!.usage, null)
+  assert.equal(claude!.sessions.find(s => s.cliSessionId === 'aaa')!.limitedAt, 1_000)
+})
+
+test('a fresh limit error with nothing after it marks the account at its limit', async () => {
+  const fs = memFs({
+    [`${AS}/Claude/claude-code-sessions/a/o/local_1.json`]: rec({ cliSessionId: 'aaa', originCwd: '/r/app', lastActivityAt: 1_000, error: "You've hit your weekly limit · resets 1am", errorAt: 1_000 }),
+    [tx('/r/app', 'aaa')]: 'x',
+  })
+  const self: Self = { home: HOME, profileDir: 'Claude-Work', profilePath: `${AS}/Claude-Work`, desktopPid: 1 }
+  const [claude] = await loadProfiles(fs, self, 10_000_000, iso => iso)
+  assert.equal(claude!.usage!.source, 'limit-error')
+})
