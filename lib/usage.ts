@@ -21,8 +21,9 @@ export function pickUsage(input: {
   formatReset: (iso: string) => string
 }): Usage | null {
   const reading = parse<Reading>(input.baton)
-  if (reading && typeof reading.percent === 'number') {
-    const isPastReset = reading.resetsAt !== null && Date.parse(reading.resetsAt) < input.now
+  const resetMs = reading?.resetsAt != null ? Date.parse(reading.resetsAt) : null
+  if (reading && typeof reading.percent === 'number' && !Number.isNaN(resetMs)) {
+    const isPastReset = resetMs !== null && resetMs < input.now
     return {
       percent: isPastReset ? 0 : reading.percent,
       resetLabel: reading.resetsAt && !isPastReset ? input.formatReset(reading.resetsAt) : null,

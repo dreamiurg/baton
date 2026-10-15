@@ -26,10 +26,14 @@ async function must(p: Promise<RunResult>): Promise<RunResult> {
 
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err))
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function bringSession(s: Session, self: Self, deps: BringDeps, forkId: string | null = null): Promise<BringResult> {
+  // Ids come from Desktop's record files and end up in paths and a sed expression, so only UUIDs pass.
+  if (!UUID.test(s.cliSessionId)) return { ok: false, forkId: null, reason: "This session's id isn't a UUID, so it can't be copied." }
   const dir = s.transcriptPath.slice(0, s.transcriptPath.lastIndexOf('/'))
   const id = forkId ?? (await deps.run(['/usr/bin/uuidgen'])).stdout.trim().toLowerCase()
-  if (!id) return { ok: false, forkId: null, reason: "Couldn't create a session id (uuidgen failed)." }
+  if (!UUID.test(id)) return { ok: false, forkId: null, reason: "Couldn't create a session id (uuidgen failed)." }
   try {
     const target = `${dir}/${id}.jsonl`
     if (!(await deps.fs.exists(target))) {
@@ -40,8 +44,9 @@ export async function bringSession(s: Session, self: Self, deps: BringDeps, fork
       if (await deps.fs.exists(sidecar)) await must(deps.run(['/bin/cp', '-R', sidecar, `${dir}/${id}`]))
     }
   } catch (err) {
-    await deps.run(['/bin/rm', '-f', `${dir}/${id}.jsonl.tmp`])
-    return { ok: false, forkId: null, reason: `Couldn't copy the transcript: ${message(err)}` }
+    await deps.run(['/bin/rm', '-f', `${dir}/${id}.jsonl.tmp`]).catch(() => undefined)
+    // Keep the id: Retry skips the copy if the fork landed and redoes it if it didn't.
+    return { ok: false, forkId: id, reason: `Couldn't copy the transcript: ${message(err)}` }
   }
 
   const sent = await deps.run(['/usr/bin/osascript', '-l', 'JavaScript', '-e', GURL_SCRIPT, String(self.desktopPid), `claude://resume?session=${id}`])

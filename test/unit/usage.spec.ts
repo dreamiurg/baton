@@ -33,3 +33,8 @@ test('serializeReading keeps the seven_day window only', () => {
   assert.equal(serializeReading([{ kind: 'five_hour', percentUsed: 3 }], 5), null)
   assert.deepEqual(JSON.parse(serializeReading([{ kind: 'seven_day', percentUsed: 23.5, resetsAt: 'R' }], 5)!), { percent: 23.5, resetsAt: 'R', asOf: 5 })
 })
+
+test('an unparseable resetsAt makes the baton reading invalid', () => {
+  const baton = JSON.stringify({ percent: 100, resetsAt: 'soon', asOf: 500 })
+  assert.deepEqual(pickUsage({ ...base, baton, planHistory: history }), { percent: 62, resetLabel: null, asOf: 20, source: 'desktop' })
+})

@@ -58,3 +58,21 @@ test('Desktop never creating the record is a failure with a reason', async () =>
   const r = await bringSession(session, self, h.deps)
   assert.deepEqual(r, { ok: false, forkId: NEW, reason: "Desktop didn't open it. Retry sends the link again." })
 })
+
+test('a copy failure keeps the fork id and survives a failing cleanup', async () => {
+  const h = harness()
+  const run = h.deps.run
+  h.deps.run = async argv => {
+    if (argv[0] === '/bin/mv') return { exitCode: 1, stdout: '', stderr: 'disk full' }
+    if (argv[0] === '/bin/rm') throw new Error('rm crashed')
+    return run(argv)
+  }
+  assert.deepEqual(await bringSession(session, self, h.deps), { ok: false, forkId: NEW, reason: "Couldn't copy the transcript: disk full" })
+})
+
+test('a session id that is not a UUID is refused before any copy', async () => {
+  const h = harness()
+  const r = await bringSession({ ...session, cliSessionId: 'x"/../y' }, self, h.deps)
+  assert.equal(r.ok, false)
+  assert.ok(!h.calls.some(c => c[0] === '/bin/mv' || c[0] === '/usr/bin/osascript'))
+})
