@@ -23,6 +23,11 @@ export type Session = {
   model: string
   tokensApprox: number
   transcriptPath: string
+  state: 'blocked' | 'completed' | null
+  repo: string
+  customGroup: string | null
+  fromProject: boolean
+  createdAt: number
 }
 
 export type Usage = {
@@ -40,6 +45,7 @@ export type Profile = {
   isSelf: boolean
   usage: Usage | null
   sessions: Session[]
+  customGroups: string[]
 }
 
 export type Self = { home: string; profileDir: string; profilePath: string; desktopPid: number }

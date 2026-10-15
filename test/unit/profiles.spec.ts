@@ -102,3 +102,19 @@ test('a transcript that vanishes mid-scan skips that session only', async () => 
   const { sessions } = await readSessions(fs, HOME, `${AS}/Claude`)
   assert.deepEqual(sessions.map(s => s.cliSessionId), ['fff', 'bbb'])
 })
+
+test('readSessions reads state, repo, custom group, project-thread flag and created time', async () => {
+  const fs = memFs({
+    [`${AS}/Claude/claude-code-sessions/acct-a/org-a/local_1.json`]: rec({ sessionId: 'local_1', cliSessionId: 'aaa', originCwd: '/r/app/.claude/worktrees/x', cwd: '/r/app/.claude/worktrees/x', gitAnchors: [{ gitRoot: '/r/app' }], createdAt: 10, lastActivityAt: 20, postTurnSummary: { status_category: 'blocked' } }),
+    [`${AS}/Claude/claude-code-sessions/acct-a/org-a/local_2.json`]: rec({ sessionId: 'local_2', cliSessionId: 'bbb', originCwd: '/r/web', lastActivityAt: 30, remoteControlSpawn: { projectThreadChild: true }, postTurnSummary: { status_category: 'completed' } }),
+    [`${AS}/Claude/claude_desktop_config.json`]: JSON.stringify({ preferences: { epitaxyPrefs: { 'dframe-group-scopes': { 'acct-a/org-a': { groups: [{ id: 'g1', name: 'Product' }, { id: 'g2', name: 'Security' }], assignments: { 'code:local_1': 'g2' } } } } } }),
+    [tx('/r/app/.claude/worktrees/x', 'aaa')]: 'x',
+    [tx('/r/web', 'bbb')]: 'x',
+  })
+  const { sessions, customGroups } = await readSessions(fs, HOME, `${AS}/Claude`)
+  const a = sessions.find(s => s.cliSessionId === 'aaa')!
+  const b = sessions.find(s => s.cliSessionId === 'bbb')!
+  assert.deepEqual([a.state, a.repo, a.customGroup, a.fromProject, a.createdAt], ['blocked', 'app', 'Security', false, 10])
+  assert.deepEqual([b.state, b.repo, b.customGroup, b.fromProject, b.createdAt], ['completed', 'web', null, true, 30])
+  assert.deepEqual(customGroups, ['Product', 'Security'])
+})

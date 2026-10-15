@@ -9,7 +9,7 @@ const DIR = '/Users/u/.claude/projects/-r-app'
 const OLD = 'aaaaaaaa-0000-4000-8000-000000000000'
 const NEW = 'bbbbbbbb-0000-4000-8000-000000000000'
 const self: Self = { home: '/Users/u', profileDir: 'Claude', profilePath: '/Users/u/Library/Application Support/Claude', desktopPid: 500 }
-const session: Session = { cliSessionId: OLD, title: 'T', folder: 'app', branch: 'main', lastActivityAt: 1, limitedAt: null, resetText: null, pr: null, model: '', tokensApprox: 1, transcriptPath: `${DIR}/${OLD}.jsonl` }
+const session: Session = { cliSessionId: OLD, title: 'T', folder: 'app', branch: 'main', lastActivityAt: 1, limitedAt: null, resetText: null, pr: null, model: '', tokensApprox: 1, transcriptPath: `${DIR}/${OLD}.jsonl`, state: null, repo: 'app', customGroup: null, fromProject: false, createdAt: 1 }
 
 function harness(opts: { imports?: boolean; sendOk?: boolean } = {}) {
   const fs = memFs({ [`${DIR}/${OLD}.jsonl`]: `{"type":"user","sessionId":"${OLD}"}\n` })
