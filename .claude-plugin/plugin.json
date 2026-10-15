@@ -1,6 +1,6 @@
 {
   "name": "baton",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Bring Claude Desktop Code sessions from your other accounts into this window with /bring",
   "author": { "name": "Dmytro Gaivoronsky", "url": "https://github.com/dreamiurg" },
   "repository": "https://github.com/dreamiurg/baton",

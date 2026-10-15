@@ -49,12 +49,15 @@ export type Config = { profiles?: Record<string, { label?: string; email?: strin
 export type RowStatus = 'idle' | 'queued' | 'opening' | 'opened' | 'failed'
 export type RowState = { status: RowStatus; forkId: string | null; reason: string | null }
 
+export type AboutState = { status: 'loading' | 'done' | 'failed'; text: string; open: boolean; at: number }
+
 export type BatonState = {
   self: Self | null
   profiles: Profile[]
   selected: string
   filter: string
   rows: Record<string, RowState>
+  about: Record<string, AboutState>
 }
 
 declare module 'claude-code' {
