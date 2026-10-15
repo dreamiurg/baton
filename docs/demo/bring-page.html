@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>baton demo: Bring page</title><link rel="stylesheet" href="demo.css"></head>
+<body style="padding: 24px; width: 1400px">
+<div class="win" style="height: 820px">
+  <div class="side">
+    <div class="dots"><i style="background:#E0645A"></i><i style="background:#E7B13F"></i><i style="background:#5FB35A"></i></div>
+    <div class="si muted">+ New session</div>
+    <div class="sec">web-app</div>
+    <div class="si">Checkout flow refactor</div>
+    <div class="si on">New session</div>
+    <div class="sec">infra</div>
+    <div class="si">Terraform module upgrade</div>
+    <div class="si">Fix flaky deploy job</div>
+    <div class="sec">docs</div>
+    <div class="si">API reference cleanup</div>
+  </div>
+  <div class="main">
+    <div style="font-weight:600">New session</div>
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-end; gap:10px">
+      <div class="bubble">/bring</div>
+      <div class="muted">baton: 3 accounts, 2 stalled sessions in Work</div>
+    </div>
+    <div class="prompt">Type / for commands</div>
+  </div>
+  <div class="pane">
+    <div class="ph">Bring a session here <span class="dim">⤢ ✕</span></div>
+    <div class="pb">
+      <div class="lbl">Into this window</div>
+      <div class="card">
+        <div><b>Personal</b> <span class="muted">alex@example.com</span></div>
+        <div class="dim"><span class="meter" style="color:#2F6FDB">━━</span><span class="meter" style="color:#D9D5CC">━━━━━━━━━━</span> 14% of weekly used · resets Fri 8:00 PM</div>
+      </div>
+      <div class="lbl">From account</div>
+      <div class="card sel">
+        <div class="row1"><div><b>Work</b> <span class="muted">alex@work.example</span></div><span class="amber" style="font-size:12px">2 stalled · 11 live</span></div>
+        <div class="dim"><span class="meter" style="color:#C2410C">━━━━━━━━━━━━</span> Limit · resets Wed 1:00 AM</div>
+      </div>
+      <div class="card">
+        <div class="row1"><div><b>Side project</b> <span class="muted">alex@side.example</span></div><span class="dim">None stalled · 4 live</span></div>
+        <div class="dim"><span class="meter" style="color:#2F6FDB">━━━━━</span><span class="meter" style="color:#D9D5CC">━━━━━━━</span> 41% of weekly used · resets Mon 9:00 AM</div>
+      </div>
+      <div class="hdr" style="padding-top:4px"><b class="amber">2 stalled in Work</b><span class="btn primary">Bring all 2</span></div>
+      <div class="ctl"><span>Group by <span class="sel-box">State</span></span><span>Sort <span class="sel-box">Recent</span></span><span style="color:#2457C5">Show claude.ai Project threads (3)</span></div>
+
+      <div class="grp amber">▾ Hit weekly limit · 2</div>
+      <div class="row"><div class="body">
+        <div class="row1"><span class="t">Payment webhook retries</span><span class="dim">12m</span></div>
+        <span class="mono">web-app · fix-webhook-retries  #482 open</span>
+        <span class="dim"><span class="amber">Limit 12m ago</span> · Opus 5.5 · ≈ 210k tokens to resume</span>
+        <div class="about">Makes Stripe webhook handling idempotent and adds retries with backoff. Tests pass locally; it's waiting on CI for PR #482. <span class="dim">· Haiku</span></div>
+      </div><div class="acts"><span class="btn">Hide</span><span class="btn">Bring</span></div></div>
+      <div class="row"><div class="body">
+        <div class="row1"><span class="t">Search indexing backfill</span><span class="dim">40m</span></div>
+        <span class="mono">infra · backfill-search-index</span>
+        <span class="dim"><span class="amber">Limit 38m ago</span> · Sonnet 5.5 · ≈ 95k tokens to resume</span>
+      </div><div class="acts"><span class="btn">About</span><span class="green" style="font-size:12px; padding: 0 8px">Opened</span></div></div>
+
+      <div class="grp">▾ Needs you · 2</div>
+      <div class="row"><div class="body">
+        <div class="row1"><span class="t">Onboarding email copy</span><span class="dim">3h</span></div>
+        <span class="mono">web-app · onboarding-emails</span>
+      </div><div class="acts"><span class="btn">About</span><span class="btn">Bring</span></div></div>
+      <div class="row"><div class="body">
+        <div class="row1"><span class="t">Rotate API keys</span><span class="dim">1d</span></div>
+        <span class="mono">infra · main</span>
+      </div><div class="acts"><span class="btn">About</span><span class="btn">Bring</span></div></div>
+      <div class="grp">▸ Done · 7</div>
+    </div>
+    <div class="foot">Bring makes a copy here. The original stays in Work.</div>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,41 @@
+/* Shared look for the README demo renders; mimics the Claude Desktop Code tab with a docked baton pane. */
+* { box-sizing: border-box; }
+body { margin: 0; background: #EDEBE6; font: 13px/1.45 -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; color: #1F1E1D; }
+.win { display: flex; background: #FAF9F5; border: 1px solid #D9D5CC; border-radius: 12px; overflow: hidden; }
+.side { width: 230px; background: #F3F1EC; border-right: 1px solid #E5E2DA; padding: 14px 10px; display: flex; flex-direction: column; gap: 3px; }
+.dots { display: flex; gap: 7px; padding: 0 6px 12px; }
+.dots i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+.si { padding: 6px 8px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si.on { background: #E6E3DC; }
+.sec { padding: 12px 8px 2px; color: #8A877F; font-size: 12px; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 18px 32px; gap: 12px; }
+.bubble { align-self: flex-end; background: #EFEDE7; border-radius: 10px; padding: 7px 12px; font-family: ui-monospace, Menlo, monospace; color: #2457C5; }
+.prompt { border: 1px solid #D9D5CC; border-radius: 12px; padding: 13px 16px; color: #8A877F; background: #fff; }
+.pane { width: 470px; background: #fff; border-left: 1px solid #E5E2DA; display: flex; flex-direction: column; }
+.pane.solo { border: 1px solid #E5E2DA; border-radius: 12px; }
+.ph { padding: 13px 18px; border-bottom: 1px solid #EEEBE4; font-weight: 600; display: flex; justify-content: space-between; color: #1F1E1D; }
+.pb { padding: 12px 18px; display: flex; flex-direction: column; gap: 9px; }
+.lbl { font-size: 11px; color: #6B6964; }
+.card { border: 1px solid #E5E2DA; border-radius: 10px; padding: 9px 12px; display: flex; flex-direction: column; gap: 3px; }
+.card.sel { border-color: #9DB8EE; background: #F7F9FE; }
+.row1 { display: flex; justify-content: space-between; gap: 8px; }
+.muted { color: #6B6964; }
+.dim { color: #8A877F; font-size: 12px; }
+.amber { color: #8A4B08; }
+.purple { color: #4B3C99; }
+.green { color: #1D6B3A; }
+.meter { letter-spacing: -1px; }
+.ctl { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 12px; color: #6B6964; }
+.sel-box { border: 1px solid #D9D5CC; border-radius: 6px; padding: 3px 22px 3px 8px; color: #1F1E1D; background: #fff; position: relative; }
+.sel-box::after { content: '▾'; position: absolute; right: 7px; color: #8A877F; }
+.hdr { display: flex; justify-content: space-between; align-items: center; }
+.btn { border: 1px solid #CFCAC0; border-radius: 8px; padding: 4px 11px; font-size: 12px; background: #fff; white-space: nowrap; }
+.btn.primary { background: #1F1E1D; color: #fff; border-color: #1F1E1D; }
+.grp { font-weight: 600; font-size: 12px; padding-top: 6px; }
+.row { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid #F0EDE7; }
+.row .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mono { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: #6B6964; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.about { margin-top: 3px; padding: 7px 10px; background: #FAF9F5; border-radius: 8px; color: #33312C; }
+.acts { display: flex; gap: 6px; }
+.foot { padding: 11px 18px; border-top: 1px solid #EEEBE4; color: #6B6964; font-size: 12px; margin-top: auto; }
