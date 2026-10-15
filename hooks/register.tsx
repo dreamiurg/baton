@@ -80,7 +80,6 @@ export const register: Register = on => {
     const Input = 'Input' in els ? els.Input : null
     const s = await read($, state)
     const now = await $.clock.now()
-    const wide = e.surface === 'desktop'
     const self = s.profiles.find(p => p.isSelf)
     const others = s.profiles.filter(p => !p.isSelf)
     const from = others.find(p => p.dir === s.selected) ?? others[0]
@@ -114,45 +113,44 @@ export const register: Register = on => {
       for (const x of pending) await bring(x)
     }
 
+    // Layout units are cells on every surface, so the meter is one line of text, not a sized box.
+    const BAR = 12
     const bar = (p: Profile) => {
       const pct = Math.min(100, Math.round(p.usage?.percent ?? 0))
       const full = pct >= 100
+      const filled = Math.round((pct / 100) * BAR)
       const text = !p.usage ? 'no usage reading yet'
         : full ? `Limit${p.usage.resetLabel ? ' · resets ' + p.usage.resetLabel : ''}`
         : `${pct}% of weekly used${p.usage.resetLabel ? ' · resets ' + p.usage.resetLabel : ''}`
       const stale = p.usage && now - p.usage.asOf > 6 * 3600_000 ? ` · as of ${ago(now, p.usage.asOf)} ago` : ''
       return (
-        <Box flexDirection="row" gap={1} alignItems="center">
-          {p.usage && wide && (
-            <Box width={90} height={5} backgroundColor="#ECE9E2">
-              <Box width={`${pct}%`} height={5} backgroundColor={full ? '#C2410C' : '#2F6FDB'} />
-            </Box>
-          )}
-          <Text dimColor>{text}{stale}</Text>
-        </Box>
+        <Text wrap="truncate-end">
+          {p.usage && <Text color={full ? '#C2410C' : '#2F6FDB'}>{'━'.repeat(filled)}</Text>}
+          {p.usage && <Text color="#D9D5CC">{'━'.repeat(BAR - filled)}</Text>}
+          {p.usage ? ' ' : ''}<Text dimColor>{text}{stale}</Text>
+        </Text>
       )
     }
 
     const card = (p: Profile, selectable: boolean) => {
       const n = stalledOf(p).length
+      const name = <Text bold>{p.label} <Text dimColor>{p.email ?? ''}</Text></Text>
       return (
-        <Box key={`card:${p.dir}`} flexDirection="column" gap={0} paddingX={1} paddingY={1} borderStyle="round"
+        <Box key={`card:${p.dir}`} flexDirection="column" gap={0} paddingX={1} borderStyle="round"
           borderColor={p.dir === from.dir && selectable ? '#9DB8EE' : '#E5E2DA'}>
-          {selectable ? (
-            <Button key={`account:${p.dir}`} plain onPress={() => update($, state, st => ({ ...st, selected: p.dir }))}>
-              {p.label} <Text dimColor>{p.email ?? ''}</Text>
-            </Button>
-          ) : (
-            <Text bold>{p.label} <Text dimColor>{p.email ?? ''}</Text></Text>
-          )}
-          <Box flexDirection="row" justifyContent="space-between">
-            {bar(p)}
+          <Box flexDirection="row" justifyContent="space-between" gap={1}>
+            {selectable ? (
+              <Button key={`account:${p.dir}`} plain onPress={() => update($, state, st => ({ ...st, selected: p.dir }))}>
+                {p.label} <Text dimColor>{p.email ?? ''}</Text>
+              </Button>
+            ) : name}
             {selectable && (
               <Text color={n ? '#8A4B08' : undefined} dimColor={!n}>
                 {n ? `${n} stalled` : 'None stalled'} · {p.sessions.length} live
               </Text>
             )}
           </Box>
+          {bar(p)}
         </Box>
       )
     }
