@@ -4,7 +4,7 @@ Ran out of weekly Claude quota on one account? Open the Claude Desktop window of
 
 ## What it does
 
-`/bring` opens a panel beside the conversation. It lists your other Claude Desktop accounts with their weekly usage, and under each one its live Code sessions, the ones that hit their limit first. **Bring** copies a session into the window you're in and opens it. The original stays where it was. **About** shows a two-to-three sentence summary of a session (written by Haiku on this window's account) so you can tell 15 similar titles apart before bringing one.
+`/bring` opens a panel beside the conversation. It lists your other Claude Desktop accounts with their weekly usage, and under each one its live Code sessions, the ones that hit their limit first. **Bring** copies a session into the window you're in and opens it. The original stays where it was. **About** shows a two-to-three sentence summary of a session (written by Haiku on this window's account) so you can tell 15 similar titles apart before bringing one. **Group by** works like Desktop's sidebar (state, date, project folder, your custom groups, or none) with a sort, and sessions spawned from claude.ai Projects stay hidden unless you show them.
 
 ## You need
 

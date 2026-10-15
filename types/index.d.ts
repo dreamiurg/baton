@@ -64,6 +64,10 @@ export type BatonState = {
   filter: string
   rows: Record<string, RowState>
   about: Record<string, AboutState>
+  groupBy: 'state' | 'date' | 'project' | 'custom' | 'none'
+  sort: 'recent' | 'name' | 'created'
+  showThreads: boolean
+  collapsed: Record<string, boolean>
 }
 
 declare module 'claude-code' {
