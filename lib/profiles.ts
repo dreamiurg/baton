@@ -126,7 +126,10 @@ export async function loadProfiles(fs: Fs, self: Self, now: number, formatReset:
     const path = `${support}/${dir}`
     if (!(await fs.exists(`${path}/claude-code-sessions`))) continue
     const { sessions, orgId } = await readSessions(fs, self.home, path)
-    const newestLimit = sessions.find(s => s.limitedAt !== null)?.resetText ?? null
+    // A limit error only describes the account now if nothing in this profile ran after it.
+    const latestLimited = sessions.find(s => s.limitedAt !== null)
+    const latestActivity = Math.max(0, ...sessions.map(s => s.lastActivityAt))
+    const newestLimit = latestLimited && latestActivity <= latestLimited.limitedAt! + 5 * 60_000 ? latestLimited.resetText ?? '' : null
     const usage = pickUsage({
       baton: await readText(fs, `${self.home}/.local/state/baton/usage/${dir}.json`),
       planHistory: await readText(fs, `${path}/plan-usage-history.json`),
