@@ -2,7 +2,12 @@ import type { Config, Fs, Profile, Self, Session } from './types.ts'
 import { pickUsage } from './usage.ts'
 
 export type Rec = {
+  sessionId?: string
   cliSessionId?: string
+  createdAt?: number
+  gitAnchors?: { gitRoot?: string }[]
+  postTurnSummary?: { status_category?: string }
+  remoteControlSpawn?: { projectThreadChild?: boolean }
   title?: string
   cwd?: string
   originCwd?: string
@@ -54,14 +59,35 @@ async function findTranscript(fs: Fs, home: string, rec: Rec, id: string): Promi
   return null
 }
 
-export async function readSessions(fs: Fs, home: string, profilePath: string): Promise<{ sessions: Session[]; orgId: string | null }> {
+type GroupScope = { groups?: { id: string; name: string }[]; assignments?: Record<string, string> }
+
+// Desktop keeps a profile's custom sidebar groups in its config, per account/org.
+async function readGroupScopes(fs: Fs, profilePath: string): Promise<Record<string, GroupScope>> {
+  try {
+    const config = JSON.parse(await fs.read(`${profilePath}/claude_desktop_config.json`)) as {
+      preferences?: { epitaxyPrefs?: { 'dframe-group-scopes'?: Record<string, GroupScope> } }
+    }
+    return config.preferences?.epitaxyPrefs?.['dframe-group-scopes'] ?? {}
+  } catch {
+    return {}
+  }
+}
+
+const basename = (path: string | undefined) => (path ?? '').split('/').filter(Boolean).pop() ?? ''
+
+export async function readSessions(fs: Fs, home: string, profilePath: string): Promise<{ sessions: Session[]; orgId: string | null; customGroups: string[] }> {
   const root = `${profilePath}/claude-code-sessions`
   const sessions: Session[] = []
+  const scopes = await readGroupScopes(fs, profilePath)
+  const customGroups: string[] = []
   let orgId: string | null = null
   let newest = -1
   for (const acct of await listDirs(fs, root)) {
     for (const org of await listDirs(fs, `${root}/${acct}`)) {
       const dir = `${root}/${acct}/${org}`
+      const scope = scopes[`${acct}/${org}`] ?? {}
+      const groupName = new Map((scope.groups ?? []).map(g => [g.id, g.name]))
+      for (const name of groupName.values()) if (!customGroups.includes(name)) customGroups.push(name)
       for (const f of await fs.list(dir).catch(() => [])) {
         if (f.kind !== 'file' || !f.name.startsWith('local_') || !f.name.endsWith('.json')) continue
         let rec: Rec
@@ -94,6 +120,11 @@ export async function readSessions(fs: Fs, home: string, profilePath: string): P
           model: modelLabel(rec.model),
           tokensApprox: Math.round(bytes / 4),
           transcriptPath,
+          state: rec.postTurnSummary?.status_category === 'blocked' ? 'blocked' : rec.postTurnSummary?.status_category === 'completed' ? 'completed' : null,
+          repo: basename(rec.gitAnchors?.[0]?.gitRoot) || basename(rec.originCwd ?? rec.cwd),
+          customGroup: groupName.get(scope.assignments?.[`code:${rec.sessionId ?? f.name.replace(/\.json$/, '')}`] ?? '') ?? null,
+          fromProject: rec.remoteControlSpawn?.projectThreadChild === true,
+          createdAt: rec.createdAt ?? last,
         })
       }
     }
@@ -103,7 +134,7 @@ export async function readSessions(fs: Fs, home: string, profilePath: string): P
     : a.limitedAt !== null ? -1
     : b.limitedAt !== null ? 1
     : b.lastActivityAt - a.lastActivityAt)
-  return { sessions, orgId }
+  return { sessions, orgId, customGroups }
 }
 
 async function readText(fs: Fs, path: string): Promise<string | null> {
@@ -127,7 +158,7 @@ export async function loadProfiles(fs: Fs, self: Self, now: number, formatReset:
     if (!dir.startsWith('Claude')) continue
     const path = `${support}/${dir}`
     if (!(await fs.exists(`${path}/claude-code-sessions`))) continue
-    const { sessions, orgId } = await readSessions(fs, self.home, path)
+    const { sessions, orgId, customGroups } = await readSessions(fs, self.home, path)
     // A limit error only describes the account now if nothing in this profile ran after it.
     const latestLimited = sessions.find(s => s.limitedAt !== null)
     const latestActivity = Math.max(0, ...sessions.map(s => s.lastActivityAt))
@@ -149,6 +180,7 @@ export async function loadProfiles(fs: Fs, self: Self, now: number, formatReset:
       isSelf: dir === self.profileDir,
       usage,
       sessions,
+      customGroups,
     })
   }
   profiles.sort((a, b) => (a.isSelf ? -1 : b.isSelf ? 1 : a.label.localeCompare(b.label)))

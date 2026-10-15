@@ -3,13 +3,16 @@ import type { Register } from 'claude-code'
 
 import { ABOUT_SYSTEM, aboutPrompt, pickExcerpt } from '../lib/about.ts'
 import { bringSession, writeUsage } from '../lib/bring.ts'
+import { GROUP_BY_LABELS, SORT_LABELS, groupSessions, stalledOf } from '../lib/grouping.ts'
+import type { GroupBy, SortBy } from '../lib/grouping.ts'
 import type { BringDeps } from '../lib/bring.ts'
 import { loadProfiles } from '../lib/profiles.ts'
 import { selfCache } from '../lib/self.ts'
 import type { AboutState, BatonState, Profile, RowState, Session } from '../lib/types.ts'
 
 const PANE = 'baton-bring'
-const EMPTY: BatonState = { self: null, profiles: [], selected: '', filter: '', rows: {}, about: {} }
+const EMPTY: BatonState = { self: null, profiles: [], selected: '', filter: '', rows: {}, about: {}, groupBy: 'state', sort: 'recent', showThreads: false, collapsed: {} }
+const VIEW_KEY = 'view'
 const state = atom({ plugin: 'baton', key: 'state' } as const, EMPTY)
 const IDLE: RowState = { status: 'idle', forkId: null, reason: null }
 
@@ -45,7 +48,6 @@ const ago = (now: number, at: number) => {
   return m < 60 ? `${m}m` : m < 48 * 60 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`
 }
 
-const stalledOf = (p: Profile) => p.sessions.filter(s => s.limitedAt !== null)
 
 export const register: Register = on => {
   const selfOf = selfCache()
@@ -69,10 +71,15 @@ export const register: Register = on => {
     const others = profiles.filter(p => !p.isSelf)
     if (others.length === 0) return { text: 'No other Claude profiles found. See the baton README to add one.' }
     const want = e.args.trim().toLowerCase()
-    const pick = others.find(p => want !== '' && p.label.toLowerCase() === want) ?? others.find(p => stalledOf(p).length > 0) ?? others[0]!
-    await update($, state, st => ({ self, profiles, selected: pick.dir, filter: '', rows: {}, about: st.about ?? {} }))
+    const pick = others.find(p => want !== '' && p.label.toLowerCase() === want) ?? others.find(p => stalledOf(p.sessions).length > 0) ?? others[0]!
+    const view = ((await $.store.get(VIEW_KEY)) ?? {}) as { groupBy?: GroupBy; sort?: SortBy }
+    await update($, state, st => ({
+      ...EMPTY, self, profiles, selected: pick.dir, about: st.about ?? {},
+      groupBy: view.groupBy && view.groupBy in GROUP_BY_LABELS ? view.groupBy : 'state',
+      sort: view.sort && view.sort in SORT_LABELS ? view.sort : 'recent',
+    }))
     const opened = await $.ui.open({ id: PANE, title: 'Bring a session here' })
-    const n = stalledOf(pick).length
+    const n = stalledOf(pick.sessions).length
     const line = `${profiles.length} accounts, ${n} stalled session${n === 1 ? '' : 's'} in ${pick.label}`
     return { text: opened.isPlaced ? line : `${line}. Widen the window to see the Bring page.` }
   })
@@ -81,6 +88,7 @@ export const register: Register = on => {
     const els = $.ui.resolve(e)
     const { Box, Text, Button } = els
     const Input = 'Input' in els ? els.Input : null
+    const Select = 'Select' in els ? els.Select : null
     const s = await read($, state)
     const now = await $.clock.now()
     const self = s.profiles.find(p => p.isSelf)
@@ -131,8 +139,13 @@ export const register: Register = on => {
       const q = s.filter.trim().toLowerCase()
       return q === '' || `${x.title} ${x.folder} ${x.branch}`.toLowerCase().includes(q)
     }
-    const stalled = stalledOf(from).filter(match)
-    const recent = from.sessions.filter(x => x.limitedAt === null).filter(match)
+    const stalled = stalledOf(from.sessions)
+    const groups = groupSessions(from.sessions.filter(match), { by: s.groupBy, sort: s.sort, showThreads: s.showThreads, customGroups: from.customGroups, now })
+    const threadCount = from.sessions.filter(x => x.fromProject).length
+    const setView = async (patch: Partial<Pick<BatonState, 'groupBy' | 'sort'>>) => {
+      const next = await update($, state, st => ({ ...st, ...patch, collapsed: patch.groupBy ? {} : st.collapsed }))
+      await $.store.set(VIEW_KEY, { groupBy: next.groupBy, sort: next.sort })
+    }
     const pending = stalled.filter(x => rowOf(x.cliSessionId).status === 'idle')
     const running = stalled.filter(x => ['queued', 'opening'].includes(rowOf(x.cliSessionId).status))
     const done = stalled.filter(x => rowOf(x.cliSessionId).status === 'opened').length
@@ -162,7 +175,7 @@ export const register: Register = on => {
     }
 
     const card = (p: Profile, selectable: boolean) => {
-      const n = stalledOf(p).length
+      const n = stalledOf(p.sessions).length
       const name = <Text bold>{p.label} <Text dimColor>{p.email ?? ''}</Text></Text>
       return (
         <Box key={`card:${p.dir}`} flexDirection="column" gap={0} paddingX={1} borderStyle="round"
@@ -192,7 +205,8 @@ export const register: Register = on => {
       return <Text dimColor>{row.status === 'queued' ? 'Queued' : 'Opening…'}</Text>
     }
 
-    const row = (x: Session, detailed: boolean) => {
+    const row = (x: Session) => {
+      const detailed = x.limitedAt !== null
       const r = rowOf(x.cliSessionId)
       const a = s.about[x.cliSessionId]
       return (
@@ -203,12 +217,12 @@ export const register: Register = on => {
               <Text dimColor>{ago(now, x.lastActivityAt)}</Text>
             </Box>
             <Text dimColor wrap="truncate-end">{x.folder}{x.branch ? ` · ${x.branch}` : ''}{x.pr ? `  ${x.pr}` : ''}</Text>
-            {detailed && (
-              <Text dimColor>
-                <Text color="#8A4B08">Limit {ago(now, x.limitedAt ?? now)} ago</Text>
-                {x.model ? ` · ${x.model}` : ''} · ≈ {Math.round(x.tokensApprox / 1000)}k tokens to resume
-              </Text>
-            )}
+            <Text dimColor wrap="truncate-end">
+              {detailed && <Text color="#8A4B08">Limit {ago(now, x.limitedAt ?? now)} ago · </Text>}
+              {x.fromProject && <Text color="#4B3C99">Project thread · </Text>}
+              {s.groupBy !== 'state' && x.state ? `${x.state === 'blocked' ? 'Needs you' : 'Done'} · ` : ''}
+              {x.model ? `${x.model} · ` : ''}≈ {Math.round(x.tokensApprox / 1000)}k tokens to resume
+            </Text>
             {r.status === 'failed' && <Text color="#A1281F">{r.reason}</Text>}
             {a?.open && a.status === 'loading' && <Text dimColor>Summarizing…</Text>}
             {a?.open && a.status === 'done' && <Text>{a.text} <Text dimColor>· Haiku</Text></Text>}
@@ -233,20 +247,47 @@ export const register: Register = on => {
             onInput={(value: string) => update($, state, st => ({ ...st, filter: value }))}
             onSubmit={(value: string) => update($, state, st => ({ ...st, filter: value }))} />
         )}
-        {stalled.length > 0 && (
-          <Box flexDirection="row" justifyContent="space-between" alignItems="center">
-            <Text bold color="#8A4B08">Hit weekly limit · {stalled.length}</Text>
+        <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+          <Text bold color={stalled.length ? '#8A4B08' : undefined} dimColor={!stalled.length}>
+            {stalled.length ? `${stalled.length} stalled in ${from.label}` : `Nothing stalled in ${from.label}`}
+          </Text>
+          {stalled.length > 0 && (
             <Button key="bring-all" variant="primary"
               label={running.length ? `Bringing ${done} of ${stalled.length}…` : pending.length ? `Bring all ${pending.length}` : 'All brought'}
               onPress={() => (pending.length && !running.length ? bringAll() : undefined)} />
-          </Box>
-        )}
-        {stalled.length === 0 && from.sessions.length > 0 && (
-          <Text dimColor>No session in {from.label} has hit its limit. You can still bring any recent one.</Text>
-        )}
-        {stalled.map(x => row(x, true))}
-        {recent.length > 0 && <Text bold dimColor>{stalled.length ? 'Other recent' : 'Recent'} · {recent.length}</Text>}
-        {recent.map(x => row(x, false))}
+          )}
+        </Box>
+        <Box flexDirection="row" flexWrap="wrap" gap={2} alignItems="center">
+          {Select && (
+            <Select key="group-by" label="Group by" value={s.groupBy}
+              options={(Object.keys(GROUP_BY_LABELS) as GroupBy[]).map(v => ({ value: v, label: GROUP_BY_LABELS[v] }))}
+              onSelect={(value: string) => setView({ groupBy: value as GroupBy })} />
+          )}
+          {Select && (
+            <Select key="sort" label="Sort" value={s.sort}
+              options={(Object.keys(SORT_LABELS) as SortBy[]).map(v => ({ value: v, label: SORT_LABELS[v] }))}
+              onSelect={(value: string) => setView({ sort: value as SortBy })} />
+          )}
+          {threadCount > 0 && (
+            <Button key="threads" plain onPress={() => update($, state, st => ({ ...st, showThreads: !st.showThreads }))}>
+              {s.showThreads ? 'Hide' : 'Show'} claude.ai Project threads ({threadCount})
+            </Button>
+          )}
+        </Box>
+        {groups.map(g => {
+          const ck = `${from.dir}:${g.id}`
+          const isOpen = !s.collapsed[ck]
+          return (
+            <Box key={`g:${g.id}`} flexDirection="column">
+              <Button key={`group:${g.id}`} plain onPress={() => update($, state, st => ({ ...st, collapsed: { ...st.collapsed, [ck]: isOpen } }))}>
+                <Text bold color={g.tone === 'limit' ? '#8A4B08' : g.tone === 'thread' ? '#4B3C99' : undefined}>
+                  {isOpen ? '▾' : '▸'} {g.name} · {g.sessions.length}
+                </Text>
+              </Button>
+              {isOpen && g.sessions.map(x => row(x))}
+            </Box>
+          )
+        })}
         {from.sessions.length === 0 && <Text dimColor>No live sessions in {from.label}.</Text>}
         <Text dimColor>Bring makes a copy here. The original stays in {from.label}.</Text>
       </Box>

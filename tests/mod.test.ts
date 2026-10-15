@@ -10,6 +10,8 @@ const files: Record<string, string> = {
   [`${AS}/Claude/claude-code-sessions/a/o/scheduled-tasks.json`]: '{}',
   [`${AS}/Claude-Work/claude-code-sessions/a/o/local_1.json`]: JSON.stringify({ cliSessionId: 'aaa', title: 'Fix login', originCwd: '/r/app', lastActivityAt: 1, error: "You've hit your weekly limit · resets 1am", errorAt: 1 }),
   [`${HOME}/.claude/projects/-r-app/aaa.jsonl`]: '{"type":"user","sessionId":"aaa"}\n',
+  [`${AS}/Claude-Work/claude-code-sessions/a/o/local_2.json`]: JSON.stringify({ cliSessionId: 'ccc', title: 'Statsig thread', originCwd: '/r/app', lastActivityAt: 2, error: "You've hit your weekly limit · resets 1am", errorAt: 2, remoteControlSpawn: { projectThreadChild: true } }),
+  [`${HOME}/.claude/projects/-r-app/ccc.jsonl`]: '{"type":"user","sessionId":"ccc"}\n',
 }
 const dirsOf = (path: string) => [...new Set(Object.keys(files).filter(p => p.startsWith(path + '/')).map(p => p.slice(path.length + 1).split('/')[0]!))]
 const out = (stdout: string, exitCode = 0) => ({ value: { exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } })
@@ -38,6 +40,9 @@ test('/bring lists the stalled session from the other profile', async ($, on) =>
   on('fs.exists', async (_$, e) => ({ value: e.path in files || Object.keys(files).some(p => p.startsWith(e.path + '/')) }))
   on('clock.now', async () => ({ value: 3_600_000 }))
   on('ui.open', async () => ({ value: { isPlaced: true as const } }))
+  const store = new Map<string, unknown>()
+  on('store.get', async (_$, e) => ({ value: store.get(e.key) }))
+  on('store.set', async (_$, e) => (store.set(e.key, e.value), { value: undefined }))
   on('fs.stat', async () => ({ value: { kind: 'file' as const, size: 400, mtimeMs: 0, isLink: false } }))
 
   let prompt = ''
@@ -51,6 +56,12 @@ test('/bring lists the stalled session from the other profile', async ($, on) =>
   await about.press({ key: 'about:aaa' })
   expect(prompt).toContain('<transcript>')
   expect(await about.find({ type: 'Text', text: /Fixes the login flow; waiting on review\./ })).toBeDefined()
+  expect(await about.find({ key: 'group-by' })).toBeDefined()
+  expect(await about.find({ type: 'Text', text: /Statsig thread/ })).toBeUndefined()
+  await about.press({ key: 'threads' })
+  expect(await about.find({ type: 'Text', text: /Statsig thread/ })).toBeDefined()
+  await about.select({ key: 'group-by', value: 'project' })
+  expect(await about.find({ key: 'group:app' })).toBeDefined()
   await about.unmount()
 
   for (const surface of ['terminal', 'desktop'] as const) {
