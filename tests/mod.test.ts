@@ -26,6 +26,7 @@ test('/bring lists the stalled session from the other profile', async ($, on) =>
     if (argv[0] === '/bin/sh') return out(`700\n${HOME}\n`)
     if (argv.at(-1) === '700') return out(`700 500 ${CLI}\n`)
     if (argv.at(-1) === '500') return out('500 1 /Applications/Claude.app/Contents/MacOS/Claude\n')
+    if (argv[0] === '/usr/bin/head' || argv[0] === '/usr/bin/tail') return out(`\n{"type":"user","message":{"content":"Fix the login flow"}}\n`)
     return out('', 1)
   })
   on('fs.list', async (_$, e) => ({ value: dirsOf(e.path).map(name => ({ name, kind: `${e.path}/${name}` in files ? ('file' as const) : ('dir' as const), size: 1, mtimeMs: 0, isLink: false })) }))
@@ -39,8 +40,19 @@ test('/bring lists the stalled session from the other profile', async ($, on) =>
   on('ui.open', async () => ({ value: { isPlaced: true as const } }))
   on('fs.stat', async () => ({ value: { kind: 'file' as const, size: 400, mtimeMs: 0, isLink: false } }))
 
+  let prompt = ''
+  on('model.complete', async (_$, e) => {
+    prompt = String(e.prompt)
+    return { value: { isAnswered: true as const, text: 'Fixes the login flow; waiting on review.', usage: { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } } }
+  })
   const answer = await $.command.run(bringInput())
   expect(JSON.stringify(answer)).toContain('2 accounts, 1 stalled session in Claude Work')
+  const about = await $.ui.mount({ plugin: 'baton', surface: 'desktop', component: 'Pane', requestId: 'baton-bring', props: { title: 'Bring a session here', isFocused: false, bodyColumns: 80, placement: 'dock', scroll: { offset: 0, bodyRows: 60 }, view: {} } })
+  await about.press({ key: 'about:aaa' })
+  expect(prompt).toContain('<transcript>')
+  expect(await about.find({ type: 'Text', text: /Fixes the login flow; waiting on review\./ })).toBeDefined()
+  await about.unmount()
+
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ plugin: 'baton', surface, component: 'Pane', requestId: 'baton-bring', props: { title: 'Bring a session here', isFocused: false, bodyColumns: 80, placement: 'dock', scroll: { offset: 0, bodyRows: 60 }, view: {} } })
     expect(await ui.find({ type: 'Text', text: /Fix login/ })).toBeDefined()

@@ -1,5 +1,6 @@
 // The types live in the $.state contract, which must be self-contained; lib code imports them from here.
 export type {
+  AboutState,
   BatonState,
   Config,
   Fs,

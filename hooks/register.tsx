@@ -1,14 +1,15 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
+import { ABOUT_SYSTEM, aboutPrompt, pickExcerpt } from '../lib/about.ts'
 import { bringSession, writeUsage } from '../lib/bring.ts'
 import type { BringDeps } from '../lib/bring.ts'
 import { loadProfiles } from '../lib/profiles.ts'
 import { selfCache } from '../lib/self.ts'
-import type { BatonState, Profile, RowState, Session } from '../lib/types.ts'
+import type { AboutState, BatonState, Profile, RowState, Session } from '../lib/types.ts'
 
 const PANE = 'baton-bring'
-const EMPTY: BatonState = { self: null, profiles: [], selected: '', filter: '', rows: {} }
+const EMPTY: BatonState = { self: null, profiles: [], selected: '', filter: '', rows: {}, about: {} }
 const state = atom({ plugin: 'baton', key: 'state' } as const, EMPTY)
 const IDLE: RowState = { status: 'idle', forkId: null, reason: null }
 
@@ -69,7 +70,7 @@ export const register: Register = on => {
     if (others.length === 0) return { text: 'No other Claude profiles found. See the baton README to add one.' }
     const want = e.args.trim().toLowerCase()
     const pick = others.find(p => want !== '' && p.label.toLowerCase() === want) ?? others.find(p => stalledOf(p).length > 0) ?? others[0]!
-    await update($, state, () => ({ self, profiles, selected: pick.dir, filter: '', rows: {} }))
+    await update($, state, st => ({ self, profiles, selected: pick.dir, filter: '', rows: {}, about: st.about ?? {} }))
     const opened = await $.ui.open({ id: PANE, title: 'Bring a session here' })
     const n = stalledOf(pick).length
     const line = `${profiles.length} accounts, ${n} stalled session${n === 1 ? '' : 's'} in ${pick.label}`
@@ -98,6 +99,32 @@ export const register: Register = on => {
       await setRow(session.cliSessionId, r.ok
         ? { status: 'opened', forkId: r.forkId, reason: null }
         : { status: 'failed', forkId: r.forkId, reason: r.reason })
+    }
+
+    const setAbout = (id: string, a: AboutState) =>
+      update($, state, st => ({ ...st, about: { ...st.about, [id]: a } }))
+
+    // Summaries cost this window's quota, so one per session per change: reopening a done one only toggles it.
+    const about = async (x: Session) => {
+      const id = x.cliSessionId
+      const cur = s.about[id]
+      if (cur?.status === 'loading') return
+      if (cur?.status === 'done' && cur.at === x.lastActivityAt) return setAbout(id, { ...cur, open: !cur.open })
+      await setAbout(id, { status: 'loading', text: '', open: true, at: x.lastActivityAt })
+      try {
+        const [head, tail] = await Promise.all([
+          $.process.run(['/usr/bin/head', '-c', '65536', x.transcriptPath]),
+          $.process.run(['/usr/bin/tail', '-c', '262144', x.transcriptPath]),
+        ])
+        const excerpt = pickExcerpt(head.stdout, tail.stdout)
+        if (!excerpt) return setAbout(id, { status: 'failed', text: 'nothing to summarize yet', open: true, at: x.lastActivityAt })
+        const r = await $.model.complete({ model: 'haiku', system: ABOUT_SYSTEM, prompt: aboutPrompt(excerpt), maxTokens: 300, timeoutMs: 30_000 })
+        await setAbout(id, r.isAnswered
+          ? { status: 'done', text: r.text.trim(), open: true, at: x.lastActivityAt }
+          : { status: 'failed', text: r.reason === 'api-error' ? `API error ${r.status ?? ''}`.trim() : r.reason, open: true, at: x.lastActivityAt })
+      } catch (err) {
+        await setAbout(id, { status: 'failed', text: err instanceof Error ? err.message : String(err), open: true, at: x.lastActivityAt })
+      }
     }
 
     const match = (x: Session) => {
@@ -167,6 +194,7 @@ export const register: Register = on => {
 
     const row = (x: Session, detailed: boolean) => {
       const r = rowOf(x.cliSessionId)
+      const a = s.about[x.cliSessionId]
       return (
         <Box key={`row:${x.cliSessionId}`} flexDirection="row" gap={2} paddingY={1} alignItems="center">
           <Box flexDirection="column" flexGrow={1} minWidth={0}>
@@ -182,8 +210,14 @@ export const register: Register = on => {
               </Text>
             )}
             {r.status === 'failed' && <Text color="#A1281F">{r.reason}</Text>}
+            {a?.open && a.status === 'loading' && <Text dimColor>Summarizing…</Text>}
+            {a?.open && a.status === 'done' && <Text>{a.text} <Text dimColor>· Haiku</Text></Text>}
+            {a?.open && a.status === 'failed' && <Text color="#A1281F">Couldn't summarize: {a.text}</Text>}
           </Box>
-          {action(x)}
+          <Box flexDirection="row" gap={1}>
+            <Button key={`about:${x.cliSessionId}`} label={a?.status === 'failed' ? 'Retry' : a?.open ? 'Hide' : 'About'} onPress={() => about(x)} />
+            {action(x)}
+          </Box>
         </Box>
       )
     }
