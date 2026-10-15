@@ -38,3 +38,17 @@ test('readSelf walks the chain with ps', async () => {
   }
   assert.equal((await readSelf(run))!.desktopPid, 500)
 })
+
+test('selfCache resolves the process chain once per session', async () => {
+  const { selfCache } = await import('../../lib/self.ts')
+  let calls = 0
+  const run: Run = async () => {
+    calls++
+    return { exitCode: 0, stdout: '1\n/Users/u\n', stderr: '' }
+  }
+  const get = selfCache()
+  assert.equal(await get(run), null)
+  const after = calls
+  assert.equal(await get(run), null)
+  assert.equal(calls, after)
+})

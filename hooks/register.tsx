@@ -4,7 +4,7 @@ import type { Register } from 'claude-code'
 import { bringSession, writeUsage } from '../lib/bring.ts'
 import type { BringDeps } from '../lib/bring.ts'
 import { loadProfiles } from '../lib/profiles.ts'
-import { readSelf } from '../lib/self.ts'
+import { selfCache } from '../lib/self.ts'
 import type { BatonState, Profile, RowState, Session } from '../lib/types.ts'
 
 const PANE = 'baton-bring'
@@ -47,20 +47,22 @@ const ago = (now: number, at: number) => {
 const stalledOf = (p: Profile) => p.sessions.filter(s => s.limitedAt !== null)
 
 export const register: Register = on => {
+  const selfOf = selfCache()
+
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'bring', description: 'Bring a session from another account into this window' })
     return next(e)
   })
 
   on('session.measure', async ($, e, next) => {
-    const self = (await read($, state)).self ?? (await readSelf(depsOf($).run))
+    const self = await selfOf(depsOf($).run)
     if (self) await writeUsage(depsOf($), self, e.rateLimits, await $.clock.now())
     return next(e)
   })
 
   on('command.run', { command: 'bring' }, async ($, e) => {
     const deps = depsOf($)
-    const self = await readSelf(deps.run)
+    const self = await selfOf(deps.run)
     if (!self) return { text: 'Run /bring in a Claude Desktop Code session.' }
     const profiles = await loadProfiles(deps.fs, self, await $.clock.now(), formatReset)
     const others = profiles.filter(p => !p.isSelf)

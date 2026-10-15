@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { bringSession } from '../../lib/bring.ts'
+import { forkTranscript } from '../../lib/fork.ts'
 import type { Run, Self, Session } from '../../lib/types.ts'
 import { memFs } from './memfs.ts'
 
@@ -22,6 +23,11 @@ function harness(opts: { imports?: boolean; sendOk?: boolean } = {}) {
       return { exitCode: 0, stdout: '', stderr: '' }
     }
     if (argv[0] === '/usr/bin/osascript') return { exitCode: 0, stdout: opts.sendOk === false ? 'error\n' : 'sent\n', stderr: '' }
+    if (argv[0] === '/bin/sh' && argv[2]!.includes('/usr/bin/sed')) {
+      const [src, dest] = argv.slice(-2) as [string, string]
+      fs.files[dest] = forkTranscript(fs.files[src]!, OLD, argv.at(-3)!.slice('"sessionId":"'.length, -1))
+      return { exitCode: 0, stdout: '', stderr: '' }
+    }
     if (argv[0] === '/bin/sh') return { exitCode: opts.imports === false ? 1 : 0, stdout: '', stderr: '' }
     return { exitCode: 0, stdout: '', stderr: '' }
   }
@@ -75,4 +81,13 @@ test('a session id that is not a UUID is refused before any copy', async () => {
   const r = await bringSession({ ...session, cliSessionId: 'x"/../y' }, self, h.deps)
   assert.equal(r.ok, false)
   assert.ok(!h.calls.some(c => c[0] === '/bin/mv' || c[0] === '/usr/bin/osascript'))
+})
+
+test('the transcript is streamed, never read into memory', async () => {
+  const h = harness()
+  h.fs.read = async () => {
+    throw new Error('read into memory')
+  }
+  assert.deepEqual(await bringSession(session, self, h.deps), { ok: true, forkId: NEW })
+  assert.equal(h.fs.files[`${DIR}/${NEW}.jsonl`], `{"type":"user","sessionId":"${NEW}"}\n`)
 })

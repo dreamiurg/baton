@@ -74,6 +74,8 @@ export async function readSessions(fs: Fs, home: string, profilePath: string): P
         if (!id || rec.isArchived) continue
         const transcriptPath = await findTranscript(fs, home, rec, id)
         if (!transcriptPath) continue
+        const bytes = await fs.size(transcriptPath).catch(() => null)
+        if (bytes === null) continue // deleted between exists and stat
         const last = rec.lastActivityAt ?? 0
         if (last > newest) {
           newest = last
@@ -90,7 +92,7 @@ export async function readSessions(fs: Fs, home: string, profilePath: string): P
           resetText: limited !== null ? RESETS.exec(rec.error ?? '')?.[1] ?? null : null,
           pr: prLabel(rec),
           model: modelLabel(rec.model),
-          tokensApprox: Math.round((await fs.size(transcriptPath)) / 4),
+          tokensApprox: Math.round(bytes / 4),
           transcriptPath,
         })
       }

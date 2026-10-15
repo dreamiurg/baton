@@ -31,3 +31,9 @@ export async function readSelf(run: Run): Promise<Self | null> {
   }
   return findSelf(chain, home)
 }
+
+// The window a session runs in never changes, so resolve it once (null included: a terminal session stays one).
+export function selfCache(): (run: Run) => Promise<Self | null> {
+  let cached: Promise<Self | null> | undefined
+  return run => (cached ??= readSelf(run))
+}
