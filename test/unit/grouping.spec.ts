@@ -44,3 +44,10 @@ test('sort applies inside groups and shown threads get their own last group', ()
 test('stalledOf never counts project threads', () => {
   assert.deepEqual(stalledOf(list).map(x => x.title), ['limited'])
 })
+
+test('a custom group named Ungrouped stays separate from unassigned sessions', () => {
+  const gs = groupSessions([s({ title: 'named', customGroup: 'Ungrouped' }), s({ title: 'none' })], { ...base, by: 'custom', customGroups: ['Ungrouped'] })
+  assert.equal(gs.length, 2)
+  assert.notEqual(gs[0]!.id, gs[1]!.id)
+  assert.deepEqual(gs.map(g => g.sessions.map(x => x.title)), [['named'], ['none']])
+})

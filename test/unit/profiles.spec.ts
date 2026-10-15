@@ -118,3 +118,13 @@ test('readSessions reads state, repo, custom group, project-thread flag and crea
   assert.deepEqual([b.state, b.repo, b.customGroup, b.fromProject, b.createdAt], ['completed', 'web', null, true, 30])
   assert.deepEqual(customGroups, ['Product', 'Security'])
 })
+
+test('custom group lookup falls back to the record filename when sessionId is missing', async () => {
+  const fs = memFs({
+    [`${AS}/Claude/claude-code-sessions/acct-a/org-a/local_1.json`]: rec({ cliSessionId: 'aaa', originCwd: '/r/app', lastActivityAt: 1 }),
+    [`${AS}/Claude/claude_desktop_config.json`]: JSON.stringify({ preferences: { epitaxyPrefs: { 'dframe-group-scopes': { 'acct-a/org-a': { groups: [{ id: 'g1', name: 'Product' }], assignments: { 'code:local_1': 'g1' } } } } } }),
+    [tx('/r/app', 'aaa')]: 'x',
+  })
+  const { sessions } = await readSessions(fs, HOME, `${AS}/Claude`)
+  assert.equal(sessions[0]!.customGroup, 'Product')
+})

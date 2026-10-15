@@ -122,7 +122,7 @@ export async function readSessions(fs: Fs, home: string, profilePath: string): P
           transcriptPath,
           state: rec.postTurnSummary?.status_category === 'blocked' ? 'blocked' : rec.postTurnSummary?.status_category === 'completed' ? 'completed' : null,
           repo: basename(rec.gitAnchors?.[0]?.gitRoot) || basename(rec.originCwd ?? rec.cwd),
-          customGroup: groupName.get(scope.assignments?.[`code:${rec.sessionId ?? `local_${id}`}`] ?? '') ?? null,
+          customGroup: groupName.get(scope.assignments?.[`code:${rec.sessionId ?? f.name.replace(/\.json$/, '')}`] ?? '') ?? null,
           fromProject: rec.remoteControlSpawn?.projectThreadChild === true,
           createdAt: rec.createdAt ?? last,
         })

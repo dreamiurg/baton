@@ -275,10 +275,11 @@ export const register: Register = on => {
           )}
         </Box>
         {groups.map(g => {
-          const isOpen = !s.collapsed[g.name]
+          const ck = `${from.dir}:${g.id}`
+          const isOpen = !s.collapsed[ck]
           return (
-            <Box key={`g:${g.name}`} flexDirection="column">
-              <Button key={`group:${g.name}`} plain onPress={() => update($, state, st => ({ ...st, collapsed: { ...st.collapsed, [g.name]: isOpen } }))}>
+            <Box key={`g:${g.id}`} flexDirection="column">
+              <Button key={`group:${g.id}`} plain onPress={() => update($, state, st => ({ ...st, collapsed: { ...st.collapsed, [ck]: isOpen } }))}>
                 <Text bold color={g.tone === 'limit' ? '#8A4B08' : g.tone === 'thread' ? '#4B3C99' : undefined}>
                   {isOpen ? '▾' : '▸'} {g.name} · {g.sessions.length}
                 </Text>
