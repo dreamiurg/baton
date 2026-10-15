@@ -1,4 +1,4 @@
-import { forkTranscript } from './fork.ts'
+import { forkArgv } from './fork.ts'
 import type { Fs, Run, RunResult, Self, Session } from './types.ts'
 import { serializeReading } from './usage.ts'
 
@@ -37,8 +37,7 @@ export async function bringSession(s: Session, self: Self, deps: BringDeps, fork
   try {
     const target = `${dir}/${id}.jsonl`
     if (!(await deps.fs.exists(target))) {
-      const text = await deps.fs.read(s.transcriptPath)
-      await deps.fs.write(`${target}.tmp`, forkTranscript(text, s.cliSessionId, id))
+      await must(deps.run(forkArgv(s.transcriptPath, `${target}.tmp`, s.cliSessionId, id)))
       await must(deps.run(['/bin/mv', `${target}.tmp`, target]))
       const sidecar = `${dir}/${s.cliSessionId}`
       if (await deps.fs.exists(sidecar)) await must(deps.run(['/bin/cp', '-R', sidecar, `${dir}/${id}`]))

@@ -17,3 +17,9 @@ function isBridgeSession(line: string): boolean {
     return false
   }
 }
+
+// The same rewrite as forkTranscript, streamed by sed so a 60 MB transcript never passes through the mod.
+export function forkArgv(src: string, dest: string, oldId: string, newId: string): readonly string[] {
+  const script = `/usr/bin/sed -e "s/$1/$2/g" -e '/"type":"bridge-session"/d' "$3" > "$4"`
+  return ['/bin/sh', '-c', script, 'sh', `"sessionId":"${oldId}"`, `"sessionId":"${newId}"`, src, dest]
+}

@@ -31,3 +31,16 @@ test('keeps the trailing newline and unrelated lines byte for byte', () => {
   const text = `{"type":"mode","mode":"auto"}\n`
   assert.equal(forkTranscript(text, OLD, NEW), text)
 })
+
+test('forkArgv streams the same rewrite with sed', async () => {
+  const { execFileSync } = await import('node:child_process')
+  const { mkdtempSync, readFileSync, writeFileSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { forkArgv } = await import('../../lib/fork.ts')
+  const dir = mkdtempSync(`${tmpdir()}/baton-fork-`)
+  const text = lines.join('\n')
+  writeFileSync(`${dir}/src.jsonl`, text)
+  const [cmd, ...args] = forkArgv(`${dir}/src.jsonl`, `${dir}/out.jsonl`, OLD, NEW)
+  execFileSync(cmd!, args)
+  assert.equal(readFileSync(`${dir}/out.jsonl`, 'utf8'), forkTranscript(text, OLD, NEW))
+})

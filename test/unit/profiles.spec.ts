@@ -94,3 +94,11 @@ test('a fresh limit error with nothing after it marks the account at its limit',
   const [claude] = await loadProfiles(fs, self, 10_000_000, iso => iso)
   assert.equal(claude!.usage!.source, 'limit-error')
 })
+
+test('a transcript that vanishes mid-scan skips that session only', async () => {
+  const fs = fixture()
+  const size = fs.size
+  fs.size = async path => (path.endsWith('/aaa.jsonl') ? Promise.reject(new Error('ENOENT')) : size(path))
+  const { sessions } = await readSessions(fs, HOME, `${AS}/Claude`)
+  assert.deepEqual(sessions.map(s => s.cliSessionId), ['fff', 'bbb'])
+})
